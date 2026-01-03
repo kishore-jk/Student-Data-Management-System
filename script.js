@@ -70,17 +70,45 @@ const contentFileInput = document.getElementById('contentFile');
 const contentUrlInput = document.getElementById('contentUrl');
 
 
-// --- Local Storage Functions ---
-function loadStudents() {
-    const studentData = localStorage.getItem('students');
-    let loadedStudents = studentData ? JSON.parse(studentData) : [];
-    loadedStudents = loadedStudents.filter(s => s && s.roll && s.roll.length === 12);
-    return loadedStudents;
-}
+// Make sure the function starts with 'async'
+studentForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // ... your existing code to gather name, roll, dob, etc. ...
 
-function saveStudents() {
-    localStorage.setItem('students', JSON.stringify(students));
-}
+    // Create the student object to send
+    const studentData = {
+        name: name,
+        roll: roll,
+        dob: dob,
+        gender: gender,
+        dept_code: deptCode,
+        dept_name: cleanedDeptName,
+        academic_year: year,
+        current_semester: currentSemester,
+        password: defaultPassword
+    };
+
+    // SEND DATA TO MYSQL via server.js
+    try {
+        const response = await fetch('http://localhost:3000/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData)
+        });
+
+        if (response.ok) {
+            alert("Student details saved to MySQL!");
+            studentForm.reset();
+            await loadStudents(); // Refresh the list
+        } else {
+            alert("Failed to save student details.");
+        }
+    } catch (err) {
+        console.error("Connection error:", err);
+        alert("Is your server.js running?");
+    }
+});
 
 // Mock Content Storage (Admin managed)
 let mockTimetableData = localStorage.getItem('timetable') ? JSON.parse(localStorage.getItem('timetable')) : {};
