@@ -70,13 +70,42 @@ const contentFileInput = document.getElementById('contentFile');
 const contentUrlInput = document.getElementById('contentUrl');
 
 
-// --- Local Storage Functions ---
-function loadStudents() {
-    const studentData = localStorage.getItem('students');
-    let loadedStudents = studentData ? JSON.parse(studentData) : [];
-    loadedStudents = loadedStudents.filter(s => s && s.roll && s.roll.length === 12);
-    return loadedStudents;
+//03 02 2026
+// --- DATABASE API FUNCTIONS ---
+const API_URL = 'http://localhost:3000/api';
+
+async function loadStudents() {
+    try {
+        const response = await fetch(`${API_URL}/students`);
+        const data = await response.json();
+        // Update the global students array
+        students = data;
+        displayStudents(); 
+        return data;
+    } catch (e) {
+        console.error("Failed to load students from database:", e);
+        return [];
+    }
 }
+
+async function saveStudentToDatabase(studentData) {
+    try {
+        const response = await fetch(`${API_URL}/students`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData)
+        });
+        const result = await response.json();
+        loadStudents(); // Refresh list after saving
+        return result;
+    } catch (e) {
+        alert("Error saving to database. Is the server running?");
+    }
+}
+
+// Update the student form submission to use this:
+// Inside studentForm.addEventListener, replace 'students.push(student)' and 'saveStudents()' with:
+// await saveStudentToDatabase(student);
 
 function saveStudents() {
     localStorage.setItem('students', JSON.stringify(students));
@@ -1176,31 +1205,3 @@ function printStudentReport(roll) {
     printContainer.innerHTML = reportHTML;
     window.print();
 }
-
-//03 02 2026
-// Function to load students from the backend API
-async function loadStudents() {
-    try {
-        const response = await fetch('http://localhost:3000/api/students');
-        
-        if (!response.ok) {
-            // Handle non-successful responses from the server
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const students = await response.json();
-        console.log('Students loaded from server:', students);
-        
-        // --- Replace with your existing code to render the students list ---
-        // Example: displayStudents(students); 
-        return students;
-
-    } catch (error) {
-        console.error("Error loading students:", error);
-        // You might want to display an error message in the UI
-        return [];
-    }
-}
-
-// Call loadStudents when the page loads or a specific event occurs
-// loadStudents();
