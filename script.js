@@ -1176,3 +1176,31 @@ function printStudentReport(roll) {
     printContainer.innerHTML = reportHTML;
     window.print();
 }
+
+//03 02 2026
+// Function to load students from the backend API
+async function loadStudents() {
+    try {
+        const response = await fetch('http://localhost:3000/api/students');
+        
+        if (!response.ok) {
+            // Handle non-successful responses from the server
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const students = await response.json();
+        console.log('Students loaded from server:', students);
+        
+        // --- Replace with your existing code to render the students list ---
+        // Example: displayStudents(students); 
+        return students;
+
+    } catch (error) {
+        console.error("Error loading students:", error);
+        // You might want to display an error message in the UI
+        return [];
+    }
+}
+
+// Call loadStudents when the page loads or a specific event occurs
+// loadStudents();
