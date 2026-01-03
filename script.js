@@ -71,38 +71,16 @@ const contentUrlInput = document.getElementById('contentUrl');
 
 
 // --- Local Storage Functions ---
-// Locate this line in your original script
-studentForm.addEventListener('submit', async function(e) { // Add 'async' here
-    e.preventDefault();
-    
-    // ... keep your existing validation (name, roll, dob, etc.) ...
+function loadStudents() {
+    const studentData = localStorage.getItem('students');
+    let loadedStudents = studentData ? JSON.parse(studentData) : [];
+    loadedStudents = loadedStudents.filter(s => s && s.roll && s.roll.length === 12);
+    return loadedStudents;
+}
 
-    // Replace the part where you used students.push(student) and saveStudents()
-    // with this block:
-    try {
-        const response = await fetch(`${API_URL}/students`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(student) // student is the object you created
-        });
-
-        if (!response.ok) throw new Error("Failed to save to database");
-
-        const result = await response.json();
-        
-        // Refresh the local students array from the database
-        const freshData = await fetch(`${API_URL}/students`);
-        students = await freshData.json();
-        
-        displayStudents(); 
-        alert(`Student ${name} registered successfully in MySQL!`);
-        studentForm.reset();
-
-    } catch (error) {
-        console.error("Database Error:", error);
-        alert("Could not connect to the server. Make sure server.js is running.");
-    }
-});
+function saveStudents() {
+    localStorage.setItem('students', JSON.stringify(students));
+}
 
 // Mock Content Storage (Admin managed)
 let mockTimetableData = localStorage.getItem('timetable') ? JSON.parse(localStorage.getItem('timetable')) : {};
@@ -129,29 +107,15 @@ function saveAdminCredentials() {
     }));
 }
 
-const API_URL = 'http://localhost:3000/api';
-let students = []; // Initialize as an empty array
-
-// Change this function to be ASYNC
-async function loadStudents() {
-    try {
-        const response = await fetch(`${API_URL}/students`);
-        if (!response.ok) throw new Error("Server not responding");
-        students = await response.json();
-        // Once data is loaded, update the UI
-        if (currentUser === 'staff') displayStudents();
-        return students;
-    } catch (e) {
-        console.error("Database Load Error:", e);
-        return [];
-    }
+let students;
+try {
+    loadAdminCredentials();
+    students = loadStudents();
+} catch (e) {
+    localStorage.removeItem('students');
+    localStorage.removeItem('adminCredentials');
+    students = [];
 }
-
-// Update the DOMContentLoaded listener to call the async loader
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadStudents();
-    // ... keep your other event listeners ...
-});
 
 // --- INITIALIZATION & Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -495,17 +459,15 @@ function getParentPassword(student) {
 }
 
 // --- LOGIN LOGIC (FINAL FIXES) ---
-// 1. Ensure the function is marked as 'async'
-async function handleLogin(e) {
+if(loginForm) loginForm.addEventListener('submit', handleLogin);
+
+function handleLogin(e) {
     e.preventDefault();
-    
     const userType = document.getElementById('userType').value;
     const usernameInput = document.getElementById('username').value.trim();
     const passwordInput = document.getElementById('password').value.trim();
     
-    // 2. CRITICAL: Refresh the students array from the database before checking
-    // This ensures you are checking against the latest MySQL data
-    await loadStudents(); 
+    if(forgotPasswordStatus) forgotPasswordStatus.textContent = ''; 
 
     if (userType === 'staff') {
         if (usernameInput.toUpperCase() === STAFF_USERNAME_CHECK && passwordInput === STAFF_PASSWORD_CHECK) {
@@ -523,22 +485,28 @@ async function handleLogin(e) {
         student = students.find(s => s.roll === usernameUpper);
     } else if (userType === 'parent') {
         const parentId = usernameInput.toLowerCase();
-        // Look for the parent ID in the database-driven students array
+        // CRITICAL FIX: Ensure the student roll slice is used in lowercase for the lookup
+        // The saved default parent username is parent@XXX, where XXX is roll.slice(-3).toLowerCase()
         student = students.find(s => `parent@${s.roll.slice(-3).toLowerCase()}` === parentId);
+        
+        if (student && parentId !== `parent@${student.roll.slice(-3).toLowerCase()}`) {
+             // This case should ideally not be hit if the student is found using the lookup above, but keeping the format check:
+             // Note: The parent username format is parent@XXX (XXX are the last 3 digits of the roll)
+        }
     }
     
     if (!student) {
-        alert('User ID not found in database.');
+        alert('User ID not found.');
         return;
     }
     
-    // Check password (ensure your database field name matches, e.g., student.password)
-    if (passwordInput === student.password) {
-        login(userType, student.roll, student.name);
-    } else {
-        alert('Invalid Password.');
+    // Ensure the student object has a 'password' field, initialize it if missing
+    if (!student.password) {
+        student.password = getStudentPassword(student);
+        saveStudents();
     }
-}
+    
+    let loginSuccess = false;
     // CRITICAL FIX: The default password for parent is different from the student's default password
     let defaultPassword = (userType === 'student') ? getStudentPassword(student) : getParentPassword(student); 
     
@@ -637,31 +605,21 @@ function login(role, userRoll, displayName) {
 
 // --- STUDENT FORM SUBMISSION FIX (Updated for Correct Semester Calculation) ---
 
-// Add 'async' here --------------------v
-if(studentForm) studentForm.addEventListener('submit', async function(e) {
+if(studentForm) studentForm.addEventListener('submit', function(e) {
     e.preventDefault();
     
-    // ... keep all your validation and calculation logic exactly as it is ...
-    
-    // Replace the students.push(student) and saveStudents() block with this:
-    try {
-        const response = await fetch(`${API_URL}/students`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(student) // 'student' is your object
-        });
-
-        if (response.ok) {
-            alert(`Student ${name} registered successfully in MySQL!`);
-            await loadStudents(); // Re-fetch the fresh list from DB
-            studentForm.reset();
-        } else {
-            alert("Server error: Could not save student.");
-        }
-    } catch (err) {
-        alert("Connection Error: Is your server.js running?");
+    if (currentUser !== 'staff') {
+        alert("Session Error: You are not logged in as Staff/Admin. Please re-login.");
+        logout();
+        return; 
     }
-});
+
+    const nameResult = validateAndFormatName(document.getElementById('name').value);
+    if (nameResult.error) { alert(`Validation Error (Name): ${nameResult.error}`); return; }
+    const name = nameResult.name; 
+    
+    const roll = rollInput.value.trim().toUpperCase();
+    const gender = genderInput.value;
     // NEW: Get Date of Birth
     const dob = dobInput.value;
     const deptInput = document.getElementById('dept');
@@ -758,7 +716,7 @@ if(studentForm) studentForm.addEventListener('submit', async function(e) {
     saveStudents();
     displayStudents();
     studentForm.reset();
-}};
+});
 
 // --- CORE UTILITY FUNCTIONS ---
 
