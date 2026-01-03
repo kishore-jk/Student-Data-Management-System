@@ -495,15 +495,17 @@ function getParentPassword(student) {
 }
 
 // --- LOGIN LOGIC (FINAL FIXES) ---
-if(loginForm) loginForm.addEventListener('submit', handleLogin);
-
-function handleLogin(e) {
+// 1. Ensure the function is marked as 'async'
+async function handleLogin(e) {
     e.preventDefault();
+    
     const userType = document.getElementById('userType').value;
     const usernameInput = document.getElementById('username').value.trim();
     const passwordInput = document.getElementById('password').value.trim();
     
-    if(forgotPasswordStatus) forgotPasswordStatus.textContent = ''; 
+    // 2. CRITICAL: Refresh the students array from the database before checking
+    // This ensures you are checking against the latest MySQL data
+    await loadStudents(); 
 
     if (userType === 'staff') {
         if (usernameInput.toUpperCase() === STAFF_USERNAME_CHECK && passwordInput === STAFF_PASSWORD_CHECK) {
@@ -521,28 +523,22 @@ function handleLogin(e) {
         student = students.find(s => s.roll === usernameUpper);
     } else if (userType === 'parent') {
         const parentId = usernameInput.toLowerCase();
-        // CRITICAL FIX: Ensure the student roll slice is used in lowercase for the lookup
-        // The saved default parent username is parent@XXX, where XXX is roll.slice(-3).toLowerCase()
+        // Look for the parent ID in the database-driven students array
         student = students.find(s => `parent@${s.roll.slice(-3).toLowerCase()}` === parentId);
-        
-        if (student && parentId !== `parent@${student.roll.slice(-3).toLowerCase()}`) {
-             // This case should ideally not be hit if the student is found using the lookup above, but keeping the format check:
-             // Note: The parent username format is parent@XXX (XXX are the last 3 digits of the roll)
-        }
     }
     
     if (!student) {
-        alert('User ID not found.');
+        alert('User ID not found in database.');
         return;
     }
     
-    // Ensure the student object has a 'password' field, initialize it if missing
-    if (!student.password) {
-        student.password = getStudentPassword(student);
-        saveStudents();
+    // Check password (ensure your database field name matches, e.g., student.password)
+    if (passwordInput === student.password) {
+        login(userType, student.roll, student.name);
+    } else {
+        alert('Invalid Password.');
     }
-    
-    let loginSuccess = false;
+}
     // CRITICAL FIX: The default password for parent is different from the student's default password
     let defaultPassword = (userType === 'student') ? getStudentPassword(student) : getParentPassword(student); 
     
