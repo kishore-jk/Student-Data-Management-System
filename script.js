@@ -131,15 +131,29 @@ function saveAdminCredentials() {
     }));
 }
 
-let students;
-try {
-    loadAdminCredentials();
-    students = loadStudents();
-} catch (e) {
-    localStorage.removeItem('students');
-    localStorage.removeItem('adminCredentials');
-    students = [];
+const API_URL = 'http://localhost:3000/api';
+let students = []; // Initialize as an empty array
+
+// Change this function to be ASYNC
+async function loadStudents() {
+    try {
+        const response = await fetch(`${API_URL}/students`);
+        if (!response.ok) throw new Error("Server not responding");
+        students = await response.json();
+        // Once data is loaded, update the UI
+        if (currentUser === 'staff') displayStudents();
+        return students;
+    } catch (e) {
+        console.error("Database Load Error:", e);
+        return [];
+    }
 }
+
+// Update the DOMContentLoaded listener to call the async loader
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadStudents();
+    // ... keep your other event listeners ...
+});
 
 // --- INITIALIZATION & Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -629,21 +643,31 @@ function login(role, userRoll, displayName) {
 
 // --- STUDENT FORM SUBMISSION FIX (Updated for Correct Semester Calculation) ---
 
-if(studentForm) studentForm.addEventListener('submit', function(e) {
+// Add 'async' here --------------------v
+if(studentForm) studentForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    if (currentUser !== 'staff') {
-        alert("Session Error: You are not logged in as Staff/Admin. Please re-login.");
-        logout();
-        return; 
-    }
-
-    const nameResult = validateAndFormatName(document.getElementById('name').value);
-    if (nameResult.error) { alert(`Validation Error (Name): ${nameResult.error}`); return; }
-    const name = nameResult.name; 
+    // ... keep all your validation and calculation logic exactly as it is ...
     
-    const roll = rollInput.value.trim().toUpperCase();
-    const gender = genderInput.value;
+    // Replace the students.push(student) and saveStudents() block with this:
+    try {
+        const response = await fetch(`${API_URL}/students`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(student) // 'student' is your object
+        });
+
+        if (response.ok) {
+            alert(`Student ${name} registered successfully in MySQL!`);
+            await loadStudents(); // Re-fetch the fresh list from DB
+            studentForm.reset();
+        } else {
+            alert("Server error: Could not save student.");
+        }
+    } catch (err) {
+        alert("Connection Error: Is your server.js running?");
+    }
+});
     // NEW: Get Date of Birth
     const dob = dobInput.value;
     const deptInput = document.getElementById('dept');
