@@ -20,6 +20,7 @@ let currentStudentName = null;
 let performanceChartInstance = null; // To hold the chart object
 
 const API_URL = 'http://localhost:3000/api';
+
 // --- DOM References ---
 const loginForm = document.getElementById('loginForm');
 const loginScreen = document.getElementById('loginScreen');
@@ -71,46 +72,39 @@ const contentFileInput = document.getElementById('contentFile');
 const contentUrlInput = document.getElementById('contentUrl');
 
 
-//03 02 2026
-// --- DATABASE API FUNCTIONS ---
-//const API_URL = 'http://localhost:3000/api';
+// --- Local Storage Functions ---
+// Locate this line in your original script
+studentForm.addEventListener('submit', async function(e) { // Add 'async' here
+    e.preventDefault();
+    
+    // ... keep your existing validation (name, roll, dob, etc.) ...
 
-async function loadStudents() {
-    try {
-        const response = await fetch(`${API_URL}/students`);
-        const data = await response.json();
-        // Update the global students array
-        students = data;
-        displayStudents(); 
-        return data;
-    } catch (e) {
-        console.error("Failed to load students from database:", e);
-        return [];
-    }
-}
-
-async function saveStudentToDatabase(studentData) {
+    // Replace the part where you used students.push(student) and saveStudents()
+    // with this block:
     try {
         const response = await fetch(`${API_URL}/students`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(studentData)
+            body: JSON.stringify(student) // student is the object you created
         });
+
+        if (!response.ok) throw new Error("Failed to save to database");
+
         const result = await response.json();
-        loadStudents(); // Refresh list after saving
-        return result;
-    } catch (e) {
-        alert("Error saving to database. Is the server running?");
+        
+        // Refresh the local students array from the database
+        const freshData = await fetch(`${API_URL}/students`);
+        students = await freshData.json();
+        
+        displayStudents(); 
+        alert(`Student ${name} registered successfully in MySQL!`);
+        studentForm.reset();
+
+    } catch (error) {
+        console.error("Database Error:", error);
+        alert("Could not connect to the server. Make sure server.js is running.");
     }
-}
-
-// Update the student form submission to use this:
-// Inside studentForm.addEventListener, replace 'students.push(student)' and 'saveStudents()' with:
-// await saveStudentToDatabase(student);
-
-function saveStudents() {
-    localStorage.setItem('students', JSON.stringify(students));
-}
+});
 
 // Mock Content Storage (Admin managed)
 let mockTimetableData = localStorage.getItem('timetable') ? JSON.parse(localStorage.getItem('timetable')) : {};
@@ -1206,4 +1200,3 @@ function printStudentReport(roll) {
     printContainer.innerHTML = reportHTML;
     window.print();
 }
-
