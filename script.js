@@ -19,8 +19,6 @@ let currentStudentRoll = null;
 let currentStudentName = null; 
 let performanceChartInstance = null; // To hold the chart object
 
-const API_URL = 'http://localhost:3000/api';
-
 // --- DOM References ---
 const loginForm = document.getElementById('loginForm');
 const loginScreen = document.getElementById('loginScreen');
@@ -764,7 +762,7 @@ if(studentForm) studentForm.addEventListener('submit', async function(e) {
     saveStudents();
     displayStudents();
     studentForm.reset();
-});
+;
 
 // --- CORE UTILITY FUNCTIONS ---
 
