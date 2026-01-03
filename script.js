@@ -19,6 +19,7 @@ let currentStudentRoll = null;
 let currentStudentName = null; 
 let performanceChartInstance = null; // To hold the chart object
 
+const API_URL = 'http://localhost:3000/api';
 // --- DOM References ---
 const loginForm = document.getElementById('loginForm');
 const loginScreen = document.getElementById('loginScreen');
@@ -72,7 +73,7 @@ const contentUrlInput = document.getElementById('contentUrl');
 
 //03 02 2026
 // --- DATABASE API FUNCTIONS ---
-const API_URL = 'http://localhost:3000/api';
+//const API_URL = 'http://localhost:3000/api';
 
 async function loadStudents() {
     try {
@@ -1205,3 +1206,4 @@ function printStudentReport(roll) {
     printContainer.innerHTML = reportHTML;
     window.print();
 }
+
