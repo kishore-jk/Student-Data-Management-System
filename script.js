@@ -765,7 +765,7 @@ studentForm.addEventListener('submit', async function(e) {
     saveStudents();
     displayStudents();
     studentForm.reset();
-});
+;
 
 // --- CORE UTILITY FUNCTIONS ---
 
