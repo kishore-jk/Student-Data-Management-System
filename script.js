@@ -633,21 +633,42 @@ function login(role, userRoll, displayName) {
 
 // --- STUDENT FORM SUBMISSION FIX (Updated for Correct Semester Calculation) ---
 
-if(studentForm) studentForm.addEventListener('submit', function(e) {
+// 1. Add 'async' to the function
+studentForm.addEventListener('submit', async function(e) { 
     e.preventDefault();
     
-    if (currentUser !== 'staff') {
-        alert("Session Error: You are not logged in as Staff/Admin. Please re-login.");
-        logout();
-        return; 
-    }
+    // ... keep your existing code to collect name, roll, dob, etc. ...
 
-    const nameResult = validateAndFormatName(document.getElementById('name').value);
-    if (nameResult.error) { alert(`Validation Error (Name): ${nameResult.error}`); return; }
-    const name = nameResult.name; 
-    
-    const roll = rollInput.value.trim().toUpperCase();
-    const gender = genderInput.value;
+    // 2. Create the data object to send to MySQL
+    const studentData = {
+        name, roll, dob, gender,
+        dept_code: deptCode,
+        dept_name: cleanedDeptName,
+        academic_year: year,
+        current_semester: currentSemester,
+        password: defaultPassword
+    };
+
+    // 3. Send the data to your server.js
+    try {
+        const response = await fetch('http://localhost:3000/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData)
+        });
+
+        if (response.ok) {
+            alert("Success! Student saved to MySQL Database.");
+            studentForm.reset();
+            // 4. Refresh the display to show the new student
+            await loadStudents(); 
+        } else {
+            alert("Error: Database rejected the data.");
+        }
+    } catch (err) {
+        alert("Connection Error: Is your server.js terminal still open?");
+    }
+});
     // NEW: Get Date of Birth
     const dob = dobInput.value;
     const deptInput = document.getElementById('dept');
